@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Gerar Prescrição{% endblock %}
+
+{% block content %}
+<h1>Gerar sua Prescrição</h1>
+<p>Selecione os produtos e a quantidade:</p>
+<input type="text" id="searchInput" placeholder="Buscar produto..." onkeyup="filterProducts()">
+
+<form action="{{ url_for('gerar_receita') }}" method="post">
+    <div class="button-group">
+        <button type="button" onclick="selectAll()">Selecionar Visíveis</button>
+        <button type="button" onclick="deselectAll()">Desmarcar Todos</button>
+    </div>
+    <ul id="productList" style="list-style: none; padding: 0; margin-top: 1rem; max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px;">
+        {% for produto in produtos %}
+        <li style="display: flex; align-items: center; padding: 12px; border-bottom: 1px solid var(--border-color); justify-content: space-between;">
+            <input type="checkbox" name="produtos" value="{{ produto.id }}">
+            <label style="flex-grow: 1; margin-left: 10px;">{{ produto.name }}</label>
+            <input type="number" name="quantidade_{{ produto.id }}" min="0" max="100" value="1" style="width: 80px; margin-bottom: 0; text-align: center;">
+        </li>
+        {% endfor %}
+    </ul>
+    <button type="submit" style="margin-top: 1rem;">Gerar Receita</button>
+</form>
+
+<div class="action-links">
+    <a href="{{ url_for('upload_file') }}">Importar nova planilha</a> | <a href="{{ url_for('limpar_dados') }}">Limpar Dados</a> | <a href="{{ url_for('logout') }}">Sair</a>
+</div>
+
+<script>
+    function filterProducts() {
+        var input, filter, ul, li, label, i, txtValue;
+        input = document.getElementById('searchInput');
+        filter = input.value.toUpperCase();
+        ul = document.getElementById('productList');
+        li = ul.getElementsByTagName('li');
+
+        for (i = 0; i < li.length; i++) {
+            label = li[i].getElementsByTagName('label')[0];
+            txtValue = label.textContent || label.innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                li[i].style.display = "flex";
+            } else {
+                li[i].style.display = "none";
+            }
+        }
+    }
+
+    function selectAll() {
+        var checkboxes = document.querySelectorAll('#productList input[type="checkbox"]');
+        checkboxes.forEach(function(checkbox) {
+            var listItem = checkbox.closest('li');
+            if (listItem.style.display !== 'none') {
+                checkbox.checked = true;
+            }
+        });
+    }
+
+    function deselectAll() {
+        var checkboxes = document.querySelectorAll('#productList input[type="checkbox"]');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.checked = false;
+        });
+    }
+</script>
+{% endblock %}
