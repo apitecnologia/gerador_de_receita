@@ -20,6 +20,7 @@ os.makedirs(instance_path, exist_ok=True)
 
 # Agora, configure a aplicação
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24))
+# A linha abaixo agora funciona de forma segura, pois o instance_path já foi criado
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', f'sqlite:///{os.path.join(instance_path, "database.sqlite")}')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -50,9 +51,7 @@ class User(UserMixin, db.Model):
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    # --- CORREÇÃO APLICADA AQUI ---
-    name = db.Column(db.String(500), nullable=False) 
-    # -----------------------------
+    name = db.Column(db.String(500), nullable=False)
     concentration = db.Column(db.String(100))
     unit = db.Column(db.String(50))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -152,7 +151,6 @@ def upload_file():
                 flash('Planilha importada com sucesso!', 'success')
                 return redirect(url_for('index'))
             except Exception as e:
-                db.session.rollback()  # Desfaz a transação em caso de erro
                 flash(f'Erro ao processar a planilha: {e}', 'error')
                 return redirect(request.url)
         else:
@@ -168,7 +166,6 @@ def limpar_dados():
         db.session.commit()
         flash('Sua lista de produtos foi limpa com sucesso.', 'success')
     except Exception as e:
-        db.session.rollback()
         flash(f'Ocorreu um erro ao limpar os dados: {e}', 'error')
     return redirect(url_for('upload_file'))
 
@@ -264,5 +261,11 @@ def create_admin():
 
 
 # 5. EXECUÇÃO DA APLICAÇÃO (Apenas para desenvolvimento local)
-if __name__ == '__main__':
-    app.run(debug=True)
+#if __name__ == '__main__':
+    # O with app.app_context() não é estritamente necessário aqui,
+    # mas é uma boa prática para operações de app
+   # with app.app_context():
+        # db.create_all() é útil para criar o banco na primeira vez
+        # No entanto, com o Flask-Migrate, você normalmente usaria 'flask db upgrade'
+        pass
+  #  app.run(debug=True)
