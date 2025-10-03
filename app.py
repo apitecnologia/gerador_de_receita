@@ -13,19 +13,19 @@ from flask_migrate import Migrate
 # 1. CONFIGURAÇÃO DA APLICAÇÃO
 app = Flask(__name__)
 
-# Configurações
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24))
-# A linha abaixo foi ajustada para usar a variável DATABASE_URL do Render
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', f'sqlite:///{os.path.join(app.instance_path, "database.sqlite")}')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Garante que o diretório 'instance' exista
+# Garante que o diretório 'instance' exista ANTES de qualquer configuração
+# Este é o local onde o banco de dados SQLite de desenvolvimento será salvo
 instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
 os.makedirs(instance_path, exist_ok=True)
 
+# Agora, configure a aplicação
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24))
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', f'sqlite:///{os.path.join(instance_path, "database.sqlite")}')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 # Inicializa as extensões
 db = SQLAlchemy(app)
-migrate = Migrate(app, db) # <-- ADICIONADO AQUI
+migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = "Por favor, faça o login para acessar esta página."
@@ -50,7 +50,9 @@ class User(UserMixin, db.Model):
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
+    # --- CORREÇÃO APLICADA AQUI ---
+    name = db.Column(db.String(500), nullable=False) 
+    # -----------------------------
     concentration = db.Column(db.String(100))
     unit = db.Column(db.String(50))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -150,6 +152,7 @@ def upload_file():
                 flash('Planilha importada com sucesso!', 'success')
                 return redirect(url_for('index'))
             except Exception as e:
+                db.session.rollback()  # Desfaz a transação em caso de erro
                 flash(f'Erro ao processar a planilha: {e}', 'error')
                 return redirect(request.url)
         else:
@@ -165,6 +168,7 @@ def limpar_dados():
         db.session.commit()
         flash('Sua lista de produtos foi limpa com sucesso.', 'success')
     except Exception as e:
+        db.session.rollback()
         flash(f'Ocorreu um erro ao limpar os dados: {e}', 'error')
     return redirect(url_for('upload_file'))
 
@@ -261,6 +265,4 @@ def create_admin():
 
 # 5. EXECUÇÃO DA APLICAÇÃO (Apenas para desenvolvimento local)
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all() # Para criar o DB local se não existir
     app.run(debug=True)
